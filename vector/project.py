@@ -6,25 +6,6 @@ import argparse
 	Require ArcGIS Pro - arcpy (python 3)
 '''
 
-class progress():
-		def __init__(self, current, maximum):
-				self.current = current
-				self.maximum = maximum
-				self.BAR_WIDTH = 15
-				self.FILE_NAME_LEN = 30
-				
-				self.current -=1
-				self.next("")
-				
-				
-		def next(self, file_name):
-				self.current += 1
-				x = int((self.BAR_WIDTH + self.FILE_NAME_LEN)*self.current/self.maximum)
-				y = round(self.current/self.maximum*100, 1)
-				z = file_name[(self.FILE_NAME_LEN*-1):]
-				text_pb = "{}[{}{}] {}/{} {}%".format("Processing", "#"*x, "."*(self.BAR_WIDTH+self.FILE_NAME_LEN-x), self.current, self.maximum, y)
-				print(text_pb, end='\r', file=sys.stdout, flush=True)
-
 def get_shp(directory):
 
 	shp_files = []
@@ -50,11 +31,14 @@ def check_crs_exists(crs_value):
 		raise e
 		return False
 
+
+
 if __name__ == '__main__':
 	
-	parser = argparse.ArgumentParser(description='Assign CRS data to shapefiles.')
+	parser = argparse.ArgumentParser(description='Convert one projection to another.')
 	parser.add_argument('input', type=str, help='Directory containing shapefiles or a single shapefile.')
 	parser.add_argument('crs', type=str, help='EPSG code or path to vector/raster containing CRS data.')
+	parser.add_argument('output', type=str, help='Directory to store output shapefile.')
 	args = parser.parse_args()
 
 	all_shp = []
@@ -83,14 +67,21 @@ if __name__ == '__main__':
 	else:
 		print("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
 		exit()
+
+	if args.output and not os.path.exists(args.output):
+		os.makedirs(args.output)
+	if args.output is None:
+		print("Missing required argument [output].")
+		exit()
+
 	print("")
 	print(f"> CRS Name: {target_crs.name}")
 	print(f"> CRS Factory Code: {target_crs.factoryCode}")
 	print("")
 
-	p = progress(0, len(all_shp))
-	count = 0
+	count = 1
 	for shp in all_shp:
-		arcpy.DefineProjection_management(shp, target_crs)
+		print(f"    ...{os.path.basename(shp)}")
+		out = os.path.join(args.output, os.path.basename(shp))
+		arcpy.management.Project(shp, out, target_crs)
 		count += 1
-		p.next(shp)
