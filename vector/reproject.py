@@ -1,10 +1,6 @@
 import arcpy
-import os
+import os, sys, shutil
 import argparse
-
-'''
-	Require ArcGIS Pro - arcpy (python 3)
-'''
 
 def get_shp(directory):
 
@@ -18,10 +14,7 @@ def get_shp(directory):
 
 def check_crs(shapefile_path):
 	desc = arcpy.Describe(shapefile_path)
-	if desc.SpatialReference is not None:
-		return True
-	else:
-		return False
+	return desc.SpatialReference
 
 def check_crs_exists(crs_value):
 	try:
@@ -34,6 +27,9 @@ def check_crs_exists(crs_value):
 
 
 if __name__ == '__main__':
+
+	if sys.version_info[0] < 3:
+		sys.exit("Error: Python 3 is required to run this script.")
 	
 	parser = argparse.ArgumentParser(description='Convert one projection to another.')
 	parser.add_argument('input', type=str, help='Directory containing shapefiles or a single shapefile.')
@@ -47,8 +43,7 @@ if __name__ == '__main__':
 	elif os.path.isfile(args.input) and args.input.endswith('.shp'):
 		all_shp.append(args.input)
 	else:
-		print("Invalid input. Please provide a valid directory or shapefile.")
-		exit()
+		sys.exit("Invalid input. Please provide a valid directory or shapefile.")
 
 	target_crs = None
 	if args.crs.isdigit():
@@ -56,32 +51,41 @@ if __name__ == '__main__':
 			target_crs = arcpy.SpatialReference(int(args.crs))
 		except Exception as e:
 			raise e
-			print("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
+			sys.exit("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
 	elif os.path.isfile(args.crs):
-		if check_crs(args.crs):
-			target_describe = arcpy.Describe(args.crs)
-			target_crs = target_describe.spatialReference
+		crs = check_crs(args.crs)
+		if crs:
+			target_crs = crs
 		else:
-			print("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
-			exit()
+			sys.exit("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
 	else:
-		print("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
-		exit()
+		sys.exit("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
 
 	if args.output and not os.path.exists(args.output):
 		os.makedirs(args.output)
+	elif args.output and os.path.exists(args.output):
+		print(f"All files in {args.output} will be deleted. Press Enter to continue.")
+		input()
+		shutil.rmtree(args.output)
+		os.makedirs(args.output)
 	if args.output is None:
-		print("Missing required argument [output].")
-		exit()
+		sys.exit("Missing required argument [output].")
 
 	print("")
 	print(f"> CRS Name: {target_crs.name}")
 	print(f"> CRS Factory Code: {target_crs.factoryCode}")
 	print("")
 
-	count = 1
 	for shp in all_shp:
-		print(f"    ...{os.path.basename(shp)}")
+
+		shp_crs = check_crs(shp)
+		if shp_crs.factoryCode == target_crs.factoryCode:
+			print(f"    ...{os.path.basename(shp)} already in {target_crs.name}. Skipping...")
+			continue
+
 		out = os.path.join(args.output, os.path.basename(shp))
+		if os.path.isfile(out):
+			os.remove(out)
+
+		print(f"    ...{os.path.basename(shp)} current CRS: {check_crs(shp).name}")
 		arcpy.management.Project(shp, out, target_crs)
-		count += 1

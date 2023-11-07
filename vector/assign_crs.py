@@ -1,29 +1,8 @@
 import arcpy
 import os
 import argparse
+import sys
 
-'''
-	Require ArcGIS Pro - arcpy (python 3)
-'''
-
-class progress():
-		def __init__(self, current, maximum):
-				self.current = current
-				self.maximum = maximum
-				self.BAR_WIDTH = 15
-				self.FILE_NAME_LEN = 30
-				
-				self.current -=1
-				self.next("")
-				
-				
-		def next(self, file_name):
-				self.current += 1
-				x = int((self.BAR_WIDTH + self.FILE_NAME_LEN)*self.current/self.maximum)
-				y = round(self.current/self.maximum*100, 1)
-				z = file_name[(self.FILE_NAME_LEN*-1):]
-				text_pb = "{}[{}{}] {}/{} {}%".format("Processing", "#"*x, "."*(self.BAR_WIDTH+self.FILE_NAME_LEN-x), self.current, self.maximum, y)
-				print(text_pb, end='\r', file=sys.stdout, flush=True)
 
 def get_shp(directory):
 
@@ -51,6 +30,9 @@ def check_crs_exists(crs_value):
 		return False
 
 if __name__ == '__main__':
+
+	if sys.version_info[0] < 3:
+		sys.exit("Error: Python 3 is required to run this script.")
 	
 	parser = argparse.ArgumentParser(description='Assign CRS data to shapefiles.')
 	parser.add_argument('input', type=str, help='Directory containing shapefiles or a single shapefile.')
@@ -63,8 +45,7 @@ if __name__ == '__main__':
 	elif os.path.isfile(args.input) and args.input.endswith('.shp'):
 		all_shp.append(args.input)
 	else:
-		print("Invalid input. Please provide a valid directory or shapefile.")
-		exit()
+		sys.exit("Invalid input. Please provide a valid directory or shapefile.")
 
 	target_crs = None
 	if args.crs.isdigit():
@@ -72,25 +53,20 @@ if __name__ == '__main__':
 			target_crs = arcpy.SpatialReference(int(args.crs))
 		except Exception as e:
 			raise e
-			print("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
+			sys.exit("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
 	elif os.path.isfile(args.crs):
 		if check_crs(args.crs):
 			target_describe = arcpy.Describe(args.crs)
 			target_crs = target_describe.spatialReference
 		else:
-			print("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
-			exit()
+			sys.exit("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
 	else:
-		print("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
-		exit()
+		sys.exit("Invalid CRS input. Please valid EPSG code or a path to a file containing CRS data.")
 	print("")
 	print(f"> CRS Name: {target_crs.name}")
 	print(f"> CRS Factory Code: {target_crs.factoryCode}")
 	print("")
 
-	p = progress(0, len(all_shp))
-	count = 0
 	for shp in all_shp:
+		print(f"Assigning... {os.path.basename(shp)}")
 		arcpy.DefineProjection_management(shp, target_crs)
-		count += 1
-		p.next(shp)
