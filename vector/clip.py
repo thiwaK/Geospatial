@@ -43,7 +43,7 @@ def get_output_file(shp, value_of_attr=None):
 
 if __name__ == '__main__':
 	
-	parser = argparse.ArgumentParser(description='Create new Shapefile(s) that contains the features of the source that are within the spatial extent of the cutter.')
+	parser = argparse.ArgumentParser(description='Clip the features in the input file(s) using the cutter. The output will be a new shapefile.')
 	parser.add_argument('input', type=str, help='Directory containing shapefiles.')
 	parser.add_argument('cutter', type=str, help='Shapefiles to use as the cutter.')
 	parser.add_argument('-a', '--attribute', type=str, help='Attribute name, if you have a multipolygon cutter.')
