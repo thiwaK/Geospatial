@@ -13,8 +13,14 @@ _id_ = None
 _coordinates_ = None
 _properties_ = None
 
+def get_files(directory, ext):
+	files_ = []
+	for root, directories, files in os.walk(directory):
+		for file in files:
+			if file.endswith(f".{ext}"):
+				files_.append(os.path.join(root, file))
 
-with open(r"C:\Users\TK4\Desktop\file.geojson", encoding='utf-8') as f:
+with open(sys.argv[1], encoding='utf-8') as f:
 	j = json.load(f)
 
 features = []
